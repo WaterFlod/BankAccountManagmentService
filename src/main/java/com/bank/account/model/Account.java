@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @Column(unique = true, nullable = false)
     private String accountNumber;
@@ -34,7 +34,7 @@ public class Account {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Version
-    private long version;
+    private Long version;
 
     public enum AccountType {
         CHECKING, SAVINGS, CREDIT
