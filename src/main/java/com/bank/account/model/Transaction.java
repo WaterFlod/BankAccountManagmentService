@@ -20,7 +20,7 @@ public class Transaction {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
-    private Account account;
+    private String accountNumber;
 
     @Column(nullable = false)
     private BigDecimal amount;

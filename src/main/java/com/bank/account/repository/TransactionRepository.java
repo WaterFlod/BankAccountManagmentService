@@ -19,12 +19,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
 
     List<Transaction> findByAccountOrderByTimestamp(Account account);
 
-    Page<Transaction> findByAccount(Account account, Pageable pageable);
+    Page<Transaction> findByAccountNumber(String accountNumber, Pageable pageable);
 
     List<Transaction> findByType(Transaction.TransactionType type);
 
-    List<Transaction> findByAccountAndType(
-            Account account,
+    List<Transaction> findByAccountNumberAndType(
+            String accountNumber,
             Transaction.TransactionType type
     );
 
