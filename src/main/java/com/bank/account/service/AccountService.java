@@ -159,8 +159,12 @@ public class AccountService {
     }
 
     private Account findAccountByNumber(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+        try {
+            return accountRepository.findByAccountNumber(accountNumber)
+                    .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+        } catch (AccountNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Transaction createTransaction(Account account, BigDecimal amount,
