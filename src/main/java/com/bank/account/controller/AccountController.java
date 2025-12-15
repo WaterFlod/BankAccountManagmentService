@@ -4,6 +4,7 @@ import com.bank.account.dto.*;
 import com.bank.account.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AccountController {
 
+    @Autowired
     private final AccountService accountService;
 
     @PostMapping
