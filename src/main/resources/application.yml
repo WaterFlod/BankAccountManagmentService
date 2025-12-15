@@ -29,3 +29,9 @@ spring:
 app:
   kafka:
     topic: banking-transactions
+  logging:
+    level:
+      com.example.demo: DEBUG
+      org.springframework.kafka: INFO
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
