@@ -27,9 +27,6 @@ class AccountServiceTest {
     private Account testAccount;
 
     @Mock
-    private CreateAccountRequest createRequest;
-
-    @Mock
     private TransactionRequest transactionRequest;
 
     @Mock
@@ -38,29 +35,19 @@ class AccountServiceTest {
     @InjectMocks
     private AccountService accountService;
 
-    @BeforeEach
-    void setUp() {
-        // Подготовка тестовых данных перед каждым тестом
-        testAccount = new Account();
-        testAccount.setId(123L);
-        testAccount.setAccountNumber("ACC123");
-        testAccount.setOwnerName("John Doe");
-        testAccount.setBalance(new BigDecimal("1000.00"));
-        testAccount.setType(Account.AccountType.CHECKING);
-
-        createRequest = new CreateAccountRequest();
-        createRequest.setOwnerName("John Doe");
-        createRequest.setType(Account.AccountType.SAVINGS);
-        createRequest.setInitialDeposit(new BigDecimal("500.00"));
-
-        transactionRequest = new TransactionRequest();
-        transactionRequest.setAmount(new BigDecimal("100.00"));
-        transactionRequest.setDescription("Test transaction");
+    private CreateAccountRequest createValidRequest() {
+        return CreateAccountRequest.builder()
+                .ownerName("John Doe")
+                .type(Account.AccountType.SAVINGS)
+                .initialDeposit(new BigDecimal("500"))
+                .build();
     }
 
     @DisplayName("Создание счёта с валидным запросом должно возвращать валидный AccountDTO")
     @Test
     void createAccountWithValidRequest_returnsValidAccountDTO() {
+        CreateAccountRequest createRequest = createValidRequest();
+
         AccountDTO result = accountService.createAccount(createRequest);
 
         assertNotNull(result);
