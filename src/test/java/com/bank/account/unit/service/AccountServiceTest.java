@@ -6,7 +6,6 @@ import com.bank.account.dto.TransactionRequest;
 import com.bank.account.model.Account;
 import com.bank.account.repository.AccountRepository;
 import com.bank.account.service.AccountService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +18,7 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
@@ -47,6 +47,16 @@ class AccountServiceTest {
     @Test
     void createAccountWithValidRequest_returnsValidAccountDTO() {
         CreateAccountRequest createRequest = createValidRequest();
+
+        Account savedAccount = new Account();
+        savedAccount.setId(1L);
+        savedAccount.setAccountNumber("ACC123456789");
+        savedAccount.setOwnerName(createRequest.getOwnerName());
+        savedAccount.setType(createRequest.getType());
+        savedAccount.setBalance(createRequest.getInitialDeposit());
+
+        when(accountRepository.save(any(Account.class))).thenReturn(savedAccount);
+
 
         AccountDTO result = accountService.createAccount(createRequest);
 
