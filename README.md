@@ -179,9 +179,6 @@ mvn test
 # Только unit-тесты
 mvn test -Dtest="*UnitTest"
 
-# Только интеграционные тесты
-mvn test -Dtest="*IntegrationTest"
-
 # С генерацией отчета о покрытии
 mvn test jacoco:report
 ```
