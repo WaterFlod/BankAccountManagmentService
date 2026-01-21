@@ -5,7 +5,9 @@ import com.bank.account.dto.CreateAccountRequest;
 import com.bank.account.dto.TransactionRequest;
 import com.bank.account.model.Account;
 import com.bank.account.repository.AccountRepository;
+import com.bank.account.repository.TransactionRepository;
 import com.bank.account.service.AccountService;
+import jakarta.xml.bind.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -31,6 +34,9 @@ class AccountServiceTest {
 
     @Mock
     AccountRepository accountRepository;
+
+    @Mock
+    TransactionRepository transactionRepository;
 
     @InjectMocks
     private AccountService accountService;
