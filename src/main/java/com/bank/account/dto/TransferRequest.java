@@ -8,14 +8,14 @@ import java.math.BigDecimal;
 @Data
 public class TransferRequest {
 
-    @NotBlank
+    @NotBlank(message = "Счёт отправителя должен быть указан")
     private String fromAccountNumber;
 
-    @NotBlank
+    @NotBlank(message = "Счёт получателя должен быть указан")
     private String toAccountNumber;
 
-    @NotNull
-    @Positive
+    @NotNull(message = "Сумма должна быть указана")
+    @Positive(message = "Сумма должна быть больше нуля")
     private BigDecimal amount;
 
     private String description = "Transfer";

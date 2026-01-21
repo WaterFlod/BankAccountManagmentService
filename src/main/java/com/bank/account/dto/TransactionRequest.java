@@ -8,10 +8,10 @@ import java.math.BigDecimal;
 @Data
 public class TransactionRequest {
 
-    @NotNull
-    @Positive
+    @NotNull(message = "Сумма должна быть указана")
+    @Positive(message = "Сумма должна быть больше нуля")
     private BigDecimal amount;
 
-    @NotBlank
+    @Size(max = 100, message = "Размер описание не должен быть больше {max} символов")
     private String description;
 }
