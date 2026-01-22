@@ -2,12 +2,17 @@ package com.bank.account.unit.service;
 
 import com.bank.account.dto.AccountDTO;
 import com.bank.account.dto.CreateAccountRequest;
+import com.bank.account.dto.TransactionDTO;
 import com.bank.account.dto.TransactionRequest;
+import com.bank.account.kafka.KafkaTransactionProducer;
+import com.bank.account.kafka.TransactionEvent;
 import com.bank.account.model.Account;
+import com.bank.account.model.Transaction;
 import com.bank.account.repository.AccountRepository;
 import com.bank.account.repository.TransactionRepository;
 import com.bank.account.service.AccountService;
 import jakarta.xml.bind.ValidationException;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,21 +21,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
-    @Mock
-    private Account testAccount;
-
-    @Mock
-    private TransactionRequest transactionRequest;
+    @InjectMocks
+    private AccountService accountService;
 
     @Mock
     AccountRepository accountRepository;
@@ -38,8 +41,11 @@ class AccountServiceTest {
     @Mock
     TransactionRepository transactionRepository;
 
-    @InjectMocks
-    private AccountService accountService;
+    @Mock
+    KafkaTransactionProducer kafkaProducer;
+
+    @Mock
+    private TransactionRequest transactionRequest;
 
     private CreateAccountRequest createValidRequest() {
         return CreateAccountRequest.builder()
@@ -73,5 +79,54 @@ class AccountServiceTest {
         assertEquals(result.getType(), Account.AccountType.SAVINGS);
 
         verify(accountRepository).save(any(Account.class));
+    }
+
+    @DisplayName("Депозит должен увеличивать баланс счёта и создавать транзакцию")
+    @Test
+    void deposit_shouldIncreaseAccountBalanceAndCreateTransaction() {
+        String accountNumber = "ACC123";
+        BigDecimal initialDeposit = new BigDecimal("1000.00");
+        BigDecimal depositAmount = new BigDecimal("500.00");
+        BigDecimal expectedBalance = new BigDecimal("1500.00");
+
+        Account mockAccount = new Account();
+        mockAccount.setId(1L);
+        mockAccount.setAccountNumber(accountNumber);
+        mockAccount.setBalance(initialDeposit);
+
+        TransactionRequest request = new TransactionRequest();
+        request.setAmount(depositAmount);
+        request.setDescription("Deposit");
+
+        Transaction savedTransaction = new Transaction();
+        savedTransaction.setId("123");
+        savedTransaction.setAccount(mockAccount);
+        savedTransaction.setAmount(depositAmount);
+        savedTransaction.setDescription("Deposit");
+        savedTransaction.setType(Transaction.TransactionType.DEPOSIT);
+
+        when(accountRepository.findByAccountNumber(accountNumber))
+                .thenReturn(Optional.of(mockAccount));
+
+        when(accountRepository.save(any(Account.class)))
+                .thenAnswer(invocation -> {
+                    Account savedAccount = invocation.getArgument(0);
+                    assertThat(savedAccount.getBalance().equals(expectedBalance));
+                    return  savedAccount;
+                });
+
+        when(transactionRepository.save(any(Transaction.class)))
+                .thenReturn(savedTransaction);
+
+        TransactionDTO result = accountService.deposit(accountNumber, request);
+
+        verify(accountRepository).findByAccountNumber(accountNumber);
+        verify(accountRepository).save(mockAccount);
+        verify(transactionRepository).save(any(Transaction.class));
+        verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
+
+        assertThat(result).isNotNull();
+        assertThat(result.getAmount()).isEqualTo(depositAmount);
+        assertThat(result.getType()).isEqualTo(Transaction.TransactionType.DEPOSIT);
     }
 }
