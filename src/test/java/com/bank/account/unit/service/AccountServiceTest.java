@@ -129,4 +129,53 @@ class AccountServiceTest {
         assertThat(result.getAmount()).isEqualTo(depositAmount);
         assertThat(result.getType()).isEqualTo(Transaction.TransactionType.DEPOSIT);
     }
+
+    @DisplayName("Вывод средств должен уменьшать баланс счёта и создавать транзакцию")
+    @Test
+    void withdraw_shouldReduceAccountBalanceAndCreateTransaction() {
+        String accountNumber = "ACC123";
+        BigDecimal initialDeposit = new BigDecimal("1000.00");
+        BigDecimal withdrawAmount = new BigDecimal("500.00");
+        BigDecimal expectedBalance = new BigDecimal("500.00");
+
+        Account mockAccount = new Account();
+        mockAccount.setId(1L);
+        mockAccount.setAccountNumber(accountNumber);
+        mockAccount.setBalance(initialDeposit);
+
+        TransactionRequest request = new TransactionRequest();
+        request.setAmount(withdrawAmount);
+        request.setDescription("Withdraw");
+
+        Transaction savedTransaction = new Transaction();
+        savedTransaction.setId("123");
+        savedTransaction.setAccount(mockAccount);
+        savedTransaction.setAmount(withdrawAmount);
+        savedTransaction.setDescription("Withdraw");
+        savedTransaction.setType(Transaction.TransactionType.WITHDRAWAL);
+
+        when(accountRepository.findByAccountNumber(accountNumber))
+                .thenReturn(Optional.of(mockAccount));
+
+        when(accountRepository.save(any(Account.class)))
+                .thenAnswer(invocation -> {
+                    Account savedAccount = invocation.getArgument(0);
+                    assertThat(savedAccount.getBalance().equals(expectedBalance));
+                    return  savedAccount;
+                });
+
+        when(transactionRepository.save(any(Transaction.class)))
+                .thenReturn(savedTransaction);
+
+        TransactionDTO result = accountService.withdraw(accountNumber, request);
+
+        verify(accountRepository).findByAccountNumber(accountNumber);
+        verify(accountRepository).save(mockAccount);
+        verify(transactionRepository).save(any(Transaction.class));
+        verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
+
+        assertThat(result).isNotNull();
+        assertThat(result.getAmount()).isEqualTo(withdrawAmount);
+        assertThat(result.getType()).isEqualTo(Transaction.TransactionType.WITHDRAWAL);
+    }
 }
