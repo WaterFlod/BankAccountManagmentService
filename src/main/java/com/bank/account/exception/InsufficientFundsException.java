@@ -1,45 +1,31 @@
 package com.bank.account.exception;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.math.BigDecimal;
 
-@ResponseStatus(HttpStatus.BAD_REQUEST)
-@Data
-public class InsufficientFundsException extends RuntimeException {
+@Getter
+public class InsufficientFundsException extends BaseException {
 
     private final String accountNumber;
     private final BigDecimal currentBalance;
     private final BigDecimal requestedAmount;
-
-    // Конструктор с минимальной информацией
-    public InsufficientFundsException(String message) {
-        super(message);
-        this.accountNumber = null;
-        this.currentBalance = null;
-        this.requestedAmount = null;
-    }
+    private final BigDecimal deficiency;
 
     public InsufficientFundsException(String accountNumber,
                                       BigDecimal currentBalance,
                                       BigDecimal requestedAmount) {
-        super(String.format(
-                "Insufficient funds on account %s. Current balance: %.2f, Requested amount: %.2f, Deficiency: %.2f",
-                accountNumber, currentBalance, requestedAmount, (requestedAmount.divide(currentBalance))
+        super(
+                "INSUFFICIENT_FUNDS",
+                HttpStatus.BAD_REQUEST,
+                String.format(
+                "Insufficient funds on account %s. Current balance: %.2f, Requested amount: %.2f",
+                accountNumber, currentBalance, requestedAmount
         ));
         this.accountNumber = accountNumber;
         this.currentBalance = currentBalance;
         this.requestedAmount = requestedAmount;
-    }
-
-    public BigDecimal getDeficiency() {
-        if (currentBalance != null && requestedAmount != null) {
-            return requestedAmount.divide(currentBalance);
-        }
-        return null;
+        this.deficiency = requestedAmount.subtract(currentBalance);
     }
 }
