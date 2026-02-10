@@ -4,6 +4,7 @@ import com.bank.account.dto.AccountDTO;
 import com.bank.account.dto.CreateAccountRequest;
 import com.bank.account.dto.TransactionDTO;
 import com.bank.account.dto.TransactionRequest;
+import com.bank.account.exception.AccountNotFoundException;
 import com.bank.account.kafka.KafkaTransactionProducer;
 import com.bank.account.kafka.TransactionEvent;
 import com.bank.account.model.Account;
@@ -130,6 +131,30 @@ class AccountServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getAmount()).isEqualTo(depositAmount);
         assertThat(result.getType()).isEqualTo(Transaction.TransactionType.DEPOSIT);
+    }
+
+    @DisplayName("Депозит должен бросать исключение, если счёт не найден")
+    @Test
+    void deposit_shouldThrowAccountNotFoundExceptionWhenAccountNotFound() {
+        String nonExistentAccountNumber = "ACC123";
+        TransactionRequest request = TransactionRequest.builder()
+                .amount(new BigDecimal("1000.00"))
+                .description("Deposit")
+                .build();
+
+        when(accountRepository.findByAccountNumber(nonExistentAccountNumber))
+                .thenReturn(Optional.empty());
+
+        AccountNotFoundException exception = assertThrows(
+                AccountNotFoundException.class,
+                () -> accountService.deposit(nonExistentAccountNumber, request)
+        );
+
+        assertEquals("Account with account number " + nonExistentAccountNumber + " not found",
+                exception.getMessage());
+
+        verify(accountRepository, never()).save(any(Account.class));
+        verify(kafkaProducer, never()).sendTransactionEvent((any()));
     }
 
     @DisplayName("Вывод средств должен уменьшать баланс счёта и создавать транзакцию")
