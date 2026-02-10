@@ -94,9 +94,11 @@ class AccountServiceTest {
         mockAccount.setAccountNumber(accountNumber);
         mockAccount.setBalance(initialDeposit);
 
-        TransactionRequest request = new TransactionRequest();
-        request.setAmount(depositAmount);
-        request.setDescription("Deposit");
+        TransactionRequest request = TransactionRequest.builder()
+                .amount(depositAmount)
+                .description("Deposit")
+                .build();
+
 
         Transaction savedTransaction = new Transaction();
         savedTransaction.setId("123");
@@ -143,9 +145,10 @@ class AccountServiceTest {
         mockAccount.setAccountNumber(accountNumber);
         mockAccount.setBalance(initialDeposit);
 
-        TransactionRequest request = new TransactionRequest();
-        request.setAmount(withdrawAmount);
-        request.setDescription("Withdraw");
+        TransactionRequest request = TransactionRequest.builder()
+                .amount(withdrawAmount)
+                .description("Withdraw")
+                .build();
 
         Transaction savedTransaction = new Transaction();
         savedTransaction.setId("123");
