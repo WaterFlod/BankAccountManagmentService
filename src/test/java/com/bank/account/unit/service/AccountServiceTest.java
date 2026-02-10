@@ -14,6 +14,7 @@ import com.bank.account.repository.TransactionRepository;
 import com.bank.account.service.AccountService;
 import jakarta.xml.bind.ValidationException;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,24 @@ class AccountServiceTest {
 
     @Mock
     private TransactionRequest transactionRequest;
+
+    private String testAccountNumber;
+    private BigDecimal initialBalance;
+    private Account mockAccount;
+
+    @BeforeEach
+    void setUp() {
+        testAccountNumber = "ACC123";
+        initialBalance = new BigDecimal("1000.00");
+
+        mockAccount = Account.builder()
+                .id(1L)
+                .accountNumber(testAccountNumber)
+                .ownerName("Ivan")
+                .balance(initialBalance)
+                .type(Account.AccountType.SAVINGS)
+                .build();
+    }
 
     private CreateAccountRequest createValidRequest() {
         return CreateAccountRequest.builder()
@@ -85,15 +104,8 @@ class AccountServiceTest {
     @DisplayName("Депозит должен увеличивать баланс счёта и создавать транзакцию")
     @Test
     void deposit_shouldIncreaseAccountBalanceAndCreateTransaction() {
-        String accountNumber = "ACC123";
-        BigDecimal initialDeposit = new BigDecimal("1000.00");
         BigDecimal depositAmount = new BigDecimal("500.00");
         BigDecimal expectedBalance = new BigDecimal("1500.00");
-
-        Account mockAccount = new Account();
-        mockAccount.setId(1L);
-        mockAccount.setAccountNumber(accountNumber);
-        mockAccount.setBalance(initialDeposit);
 
         TransactionRequest request = TransactionRequest.builder()
                 .amount(depositAmount)
@@ -108,7 +120,7 @@ class AccountServiceTest {
         savedTransaction.setDescription("Deposit");
         savedTransaction.setType(Transaction.TransactionType.DEPOSIT);
 
-        when(accountRepository.findByAccountNumber(accountNumber))
+        when(accountRepository.findByAccountNumber(testAccountNumber))
                 .thenReturn(Optional.of(mockAccount));
 
         when(accountRepository.save(any(Account.class)))
@@ -121,9 +133,9 @@ class AccountServiceTest {
         when(transactionRepository.save(any(Transaction.class)))
                 .thenReturn(savedTransaction);
 
-        TransactionDTO result = accountService.deposit(accountNumber, request);
+        TransactionDTO result = accountService.deposit(testAccountNumber, request);
 
-        verify(accountRepository).findByAccountNumber(accountNumber);
+        verify(accountRepository).findByAccountNumber(testAccountNumber);
         verify(accountRepository).save(mockAccount);
         verify(transactionRepository).save(any(Transaction.class));
         verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
@@ -136,21 +148,20 @@ class AccountServiceTest {
     @DisplayName("Депозит должен бросать исключение, если счёт не найден")
     @Test
     void deposit_shouldThrowAccountNotFoundExceptionWhenAccountNotFound() {
-        String nonExistentAccountNumber = "ACC123";
         TransactionRequest request = TransactionRequest.builder()
                 .amount(new BigDecimal("1000.00"))
                 .description("Deposit")
                 .build();
 
-        when(accountRepository.findByAccountNumber(nonExistentAccountNumber))
+        when(accountRepository.findByAccountNumber(testAccountNumber))
                 .thenReturn(Optional.empty());
 
         AccountNotFoundException exception = assertThrows(
                 AccountNotFoundException.class,
-                () -> accountService.deposit(nonExistentAccountNumber, request)
+                () -> accountService.deposit(testAccountNumber, request)
         );
 
-        assertEquals("Account with account number " + nonExistentAccountNumber + " not found",
+        assertEquals("Account with account number " + testAccountNumber + " not found",
                 exception.getMessage());
 
         verify(accountRepository, never()).save(any(Account.class));
@@ -160,15 +171,8 @@ class AccountServiceTest {
     @DisplayName("Вывод средств должен уменьшать баланс счёта и создавать транзакцию")
     @Test
     void withdraw_shouldReduceAccountBalanceAndCreateTransaction() {
-        String accountNumber = "ACC123";
-        BigDecimal initialDeposit = new BigDecimal("1000.00");
         BigDecimal withdrawAmount = new BigDecimal("500.00");
         BigDecimal expectedBalance = new BigDecimal("500.00");
-
-        Account mockAccount = new Account();
-        mockAccount.setId(1L);
-        mockAccount.setAccountNumber(accountNumber);
-        mockAccount.setBalance(initialDeposit);
 
         TransactionRequest request = TransactionRequest.builder()
                 .amount(withdrawAmount)
@@ -182,7 +186,7 @@ class AccountServiceTest {
         savedTransaction.setDescription("Withdraw");
         savedTransaction.setType(Transaction.TransactionType.WITHDRAWAL);
 
-        when(accountRepository.findByAccountNumber(accountNumber))
+        when(accountRepository.findByAccountNumber(testAccountNumber))
                 .thenReturn(Optional.of(mockAccount));
 
         when(accountRepository.save(any(Account.class)))
@@ -195,9 +199,9 @@ class AccountServiceTest {
         when(transactionRepository.save(any(Transaction.class)))
                 .thenReturn(savedTransaction);
 
-        TransactionDTO result = accountService.withdraw(accountNumber, request);
+        TransactionDTO result = accountService.withdraw(testAccountNumber, request);
 
-        verify(accountRepository).findByAccountNumber(accountNumber);
+        verify(accountRepository).findByAccountNumber(testAccountNumber);
         verify(accountRepository).save(mockAccount);
         verify(transactionRepository).save(any(Transaction.class));
         verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
