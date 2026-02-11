@@ -1,6 +1,7 @@
 package com.bank.account.service;
 
 import com.bank.account.dto.*;
+import com.bank.account.exception.AccountNotFoundException;
 import com.bank.account.exception.InsufficientFundsException;
 import com.bank.account.kafka.KafkaTransactionProducer;
 import com.bank.account.kafka.TransactionEvent;
@@ -14,7 +15,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -83,7 +83,7 @@ public class AccountService {
         Account account = findAccountByNumber(accountNumber);
 
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new InsufficientFundsException("Insufficient funds for withdrawal");
+            throw new InsufficientFundsException(accountNumber, account.getBalance(),request.getAmount());
         }
 
         BigDecimal newBalance = account.getBalance().subtract(request.getAmount());
@@ -104,7 +104,7 @@ public class AccountService {
         Account toAccount = findAccountByNumber(request.getToAccountNumber());
 
         if (fromAccount.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new InsufficientFundsException("Insufficient funds for transfer");
+            throw new InsufficientFundsException(fromAccount.getAccountNumber(), fromAccount.getBalance(), request.getAmount());
         }
 
         // Снимаем со счёта отправителя
@@ -159,12 +159,8 @@ public class AccountService {
     }
 
     private Account findAccountByNumber(String accountNumber) {
-        try {
             return accountRepository.findByAccountNumber(accountNumber)
-                    .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
-        } catch (AccountNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+                    .orElseThrow(() -> new AccountNotFoundException(accountNumber));
     }
 
     private Transaction createTransaction(Account account, BigDecimal amount,

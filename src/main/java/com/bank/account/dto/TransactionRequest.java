@@ -1,11 +1,13 @@
 package com.bank.account.dto;
 
 import jakarta.validation.constraints.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Data
+@Builder
 public class TransactionRequest {
 
     @NotNull(message = "Сумма должна быть указана")

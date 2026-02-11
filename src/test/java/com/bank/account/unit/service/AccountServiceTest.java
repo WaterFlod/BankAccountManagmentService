@@ -4,6 +4,7 @@ import com.bank.account.dto.AccountDTO;
 import com.bank.account.dto.CreateAccountRequest;
 import com.bank.account.dto.TransactionDTO;
 import com.bank.account.dto.TransactionRequest;
+import com.bank.account.exception.AccountNotFoundException;
 import com.bank.account.kafka.KafkaTransactionProducer;
 import com.bank.account.kafka.TransactionEvent;
 import com.bank.account.model.Account;
@@ -13,7 +14,9 @@ import com.bank.account.repository.TransactionRepository;
 import com.bank.account.service.AccountService;
 import jakarta.xml.bind.ValidationException;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,135 +50,199 @@ class AccountServiceTest {
     @Mock
     private TransactionRequest transactionRequest;
 
-    private CreateAccountRequest createValidRequest() {
-        return CreateAccountRequest.builder()
-                .ownerName("John Doe")
+    private String testAccountNumber;
+    private BigDecimal initialBalance;
+    private Account mockAccount;
+
+    @BeforeEach
+    void setUp() {
+        testAccountNumber = "ACC123";
+        initialBalance = new BigDecimal("1000.00");
+
+        mockAccount = Account.builder()
+                .id(1L)
+                .accountNumber(testAccountNumber)
+                .ownerName("Ivan")
+                .balance(initialBalance)
                 .type(Account.AccountType.SAVINGS)
-                .initialDeposit(new BigDecimal("500"))
                 .build();
     }
 
-    @DisplayName("Создание счёта с валидным запросом должно возвращать валидный AccountDTO")
-    @Test
-    void createAccountWithValidRequest_returnsValidAccountDTO() {
-        CreateAccountRequest createRequest = createValidRequest();
+    @Nested
+    @DisplayName("Тесты создания счета")
+    class CreateAccountTest {
 
-        Account savedAccount = new Account();
-        savedAccount.setId(1L);
-        savedAccount.setAccountNumber("ACC123456789");
-        savedAccount.setOwnerName(createRequest.getOwnerName());
-        savedAccount.setType(createRequest.getType());
-        savedAccount.setBalance(createRequest.getInitialDeposit());
+        @DisplayName("Создание счёта с валидным запросом должно возвращать валидный AccountDTO")
+        @Test
+        void createAccountWithValidRequest_returnsValidAccountDTO() {
+            CreateAccountRequest createRequest = CreateAccountRequest.builder()
+                    .ownerName("John Doe")
+                    .type(Account.AccountType.SAVINGS)
+                    .initialDeposit(new BigDecimal("500"))
+                    .build();
 
-        when(accountRepository.save(any(Account.class))).thenReturn(savedAccount);
+            Account savedAccount = new Account();
+            savedAccount.setId(1L);
+            savedAccount.setAccountNumber("ACC123456789");
+            savedAccount.setOwnerName(createRequest.getOwnerName());
+            savedAccount.setType(createRequest.getType());
+            savedAccount.setBalance(createRequest.getInitialDeposit());
+
+            when(accountRepository.save(any(Account.class))).thenReturn(savedAccount);
 
 
-        AccountDTO result = accountService.createAccount(createRequest);
+            AccountDTO result = accountService.createAccount(createRequest);
 
-        assertNotNull(result);
-        assertTrue(result.getAccountNumber().startsWith("ACC"));
-        assertEquals(result.getOwnerName(), "John Doe");
-        assertEquals(result.getBalance(), new BigDecimal("500"));
-        assertEquals(result.getType(), Account.AccountType.SAVINGS);
+            assertNotNull(result);
+            assertTrue(result.getAccountNumber().startsWith("ACC"));
+            assertEquals(result.getOwnerName(), "John Doe");
+            assertEquals(result.getBalance(), new BigDecimal("500"));
+            assertEquals(result.getType(), Account.AccountType.SAVINGS);
 
-        verify(accountRepository).save(any(Account.class));
+            verify(accountRepository).save(any(Account.class));
+        }
     }
 
-    @DisplayName("Депозит должен увеличивать баланс счёта и создавать транзакцию")
-    @Test
-    void deposit_shouldIncreaseAccountBalanceAndCreateTransaction() {
-        String accountNumber = "ACC123";
-        BigDecimal initialDeposit = new BigDecimal("1000.00");
-        BigDecimal depositAmount = new BigDecimal("500.00");
-        BigDecimal expectedBalance = new BigDecimal("1500.00");
+    @Nested
+    @DisplayName("Тесты депозитов")
+    class DepositTest {
 
-        Account mockAccount = new Account();
-        mockAccount.setId(1L);
-        mockAccount.setAccountNumber(accountNumber);
-        mockAccount.setBalance(initialDeposit);
+        @DisplayName("Депозит должен увеличивать баланс счёта и создавать транзакцию")
+        @Test
+        void deposit_shouldIncreaseAccountBalanceAndCreateTransaction() {
+            BigDecimal depositAmount = new BigDecimal("500.00");
+            BigDecimal expectedBalance = new BigDecimal("1500.00");
 
-        TransactionRequest request = new TransactionRequest();
-        request.setAmount(depositAmount);
-        request.setDescription("Deposit");
+            TransactionRequest request = TransactionRequest.builder()
+                    .amount(depositAmount)
+                    .description("Deposit")
+                    .build();
 
-        Transaction savedTransaction = new Transaction();
-        savedTransaction.setId("123");
-        savedTransaction.setAccount(mockAccount);
-        savedTransaction.setAmount(depositAmount);
-        savedTransaction.setDescription("Deposit");
-        savedTransaction.setType(Transaction.TransactionType.DEPOSIT);
 
-        when(accountRepository.findByAccountNumber(accountNumber))
-                .thenReturn(Optional.of(mockAccount));
+            Transaction savedTransaction = new Transaction();
+            savedTransaction.setId("123");
+            savedTransaction.setAccount(mockAccount);
+            savedTransaction.setAmount(depositAmount);
+            savedTransaction.setDescription("Deposit");
+            savedTransaction.setType(Transaction.TransactionType.DEPOSIT);
 
-        when(accountRepository.save(any(Account.class)))
-                .thenAnswer(invocation -> {
-                    Account savedAccount = invocation.getArgument(0);
-                    assertThat(savedAccount.getBalance().equals(expectedBalance));
-                    return  savedAccount;
-                });
+            when(accountRepository.findByAccountNumber(testAccountNumber))
+                    .thenReturn(Optional.of(mockAccount));
 
-        when(transactionRepository.save(any(Transaction.class)))
-                .thenReturn(savedTransaction);
+            when(accountRepository.save(any(Account.class)))
+                    .thenAnswer(invocation -> {
+                        Account savedAccount = invocation.getArgument(0);
+                        assertThat(savedAccount.getBalance().equals(expectedBalance));
+                        return savedAccount;
+                    });
 
-        TransactionDTO result = accountService.deposit(accountNumber, request);
+            when(transactionRepository.save(any(Transaction.class)))
+                    .thenReturn(savedTransaction);
 
-        verify(accountRepository).findByAccountNumber(accountNumber);
-        verify(accountRepository).save(mockAccount);
-        verify(transactionRepository).save(any(Transaction.class));
-        verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
+            TransactionDTO result = accountService.deposit(testAccountNumber, request);
 
-        assertThat(result).isNotNull();
-        assertThat(result.getAmount()).isEqualTo(depositAmount);
-        assertThat(result.getType()).isEqualTo(Transaction.TransactionType.DEPOSIT);
+            verify(accountRepository).findByAccountNumber(testAccountNumber);
+            verify(accountRepository).save(mockAccount);
+            verify(transactionRepository).save(any(Transaction.class));
+            verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
+
+            assertThat(result).isNotNull();
+            assertThat(result.getAmount()).isEqualTo(depositAmount);
+            assertThat(result.getType()).isEqualTo(Transaction.TransactionType.DEPOSIT);
+        }
+
+        @DisplayName("Депозит должен бросать исключение, если счёт не найден")
+        @Test
+        void deposit_shouldThrowAccountNotFoundExceptionWhenAccountNotFound() {
+            TransactionRequest request = TransactionRequest.builder()
+                    .amount(new BigDecimal("1000.00"))
+                    .description("Deposit")
+                    .build();
+
+            when(accountRepository.findByAccountNumber(testAccountNumber))
+                    .thenReturn(Optional.empty());
+
+            AccountNotFoundException exception = assertThrows(
+                    AccountNotFoundException.class,
+                    () -> accountService.deposit(testAccountNumber, request)
+            );
+
+            assertEquals("Account with account number " + testAccountNumber + " not found",
+                    exception.getMessage());
+
+            verify(accountRepository, never()).save(any(Account.class));
+            verify(kafkaProducer, never()).sendTransactionEvent((any()));
+        }
     }
 
-    @DisplayName("Вывод средств должен уменьшать баланс счёта и создавать транзакцию")
-    @Test
-    void withdraw_shouldReduceAccountBalanceAndCreateTransaction() {
-        String accountNumber = "ACC123";
-        BigDecimal initialDeposit = new BigDecimal("1000.00");
-        BigDecimal withdrawAmount = new BigDecimal("500.00");
-        BigDecimal expectedBalance = new BigDecimal("500.00");
+    @Nested
+    @DisplayName("Тесты вывода средств")
+    class WithdrawTest {
 
-        Account mockAccount = new Account();
-        mockAccount.setId(1L);
-        mockAccount.setAccountNumber(accountNumber);
-        mockAccount.setBalance(initialDeposit);
+        @DisplayName("Вывод средств должен уменьшать баланс счёта и создавать транзакцию")
+        @Test
+        void withdraw_shouldReduceAccountBalanceAndCreateTransaction() {
+            BigDecimal withdrawAmount = new BigDecimal("500.00");
+            BigDecimal expectedBalance = new BigDecimal("500.00");
 
-        TransactionRequest request = new TransactionRequest();
-        request.setAmount(withdrawAmount);
-        request.setDescription("Withdraw");
+            TransactionRequest request = TransactionRequest.builder()
+                    .amount(withdrawAmount)
+                    .description("Withdraw")
+                    .build();
 
-        Transaction savedTransaction = new Transaction();
-        savedTransaction.setId("123");
-        savedTransaction.setAccount(mockAccount);
-        savedTransaction.setAmount(withdrawAmount);
-        savedTransaction.setDescription("Withdraw");
-        savedTransaction.setType(Transaction.TransactionType.WITHDRAWAL);
+            Transaction savedTransaction = new Transaction();
+            savedTransaction.setId("123");
+            savedTransaction.setAccount(mockAccount);
+            savedTransaction.setAmount(withdrawAmount);
+            savedTransaction.setDescription("Withdraw");
+            savedTransaction.setType(Transaction.TransactionType.WITHDRAWAL);
 
-        when(accountRepository.findByAccountNumber(accountNumber))
-                .thenReturn(Optional.of(mockAccount));
+            when(accountRepository.findByAccountNumber(testAccountNumber))
+                    .thenReturn(Optional.of(mockAccount));
 
-        when(accountRepository.save(any(Account.class)))
-                .thenAnswer(invocation -> {
-                    Account savedAccount = invocation.getArgument(0);
-                    assertThat(savedAccount.getBalance().equals(expectedBalance));
-                    return  savedAccount;
-                });
+            when(accountRepository.save(any(Account.class)))
+                    .thenAnswer(invocation -> {
+                        Account savedAccount = invocation.getArgument(0);
+                        assertThat(savedAccount.getBalance().equals(expectedBalance));
+                        return savedAccount;
+                    });
 
-        when(transactionRepository.save(any(Transaction.class)))
-                .thenReturn(savedTransaction);
+            when(transactionRepository.save(any(Transaction.class)))
+                    .thenReturn(savedTransaction);
 
-        TransactionDTO result = accountService.withdraw(accountNumber, request);
+            TransactionDTO result = accountService.withdraw(testAccountNumber, request);
 
-        verify(accountRepository).findByAccountNumber(accountNumber);
-        verify(accountRepository).save(mockAccount);
-        verify(transactionRepository).save(any(Transaction.class));
-        verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
+            verify(accountRepository).findByAccountNumber(testAccountNumber);
+            verify(accountRepository).save(mockAccount);
+            verify(transactionRepository).save(any(Transaction.class));
+            verify(kafkaProducer).sendTransactionEvent(any(TransactionEvent.class));
 
-        assertThat(result).isNotNull();
-        assertThat(result.getAmount()).isEqualTo(withdrawAmount);
-        assertThat(result.getType()).isEqualTo(Transaction.TransactionType.WITHDRAWAL);
+            assertThat(result).isNotNull();
+            assertThat(result.getAmount()).isEqualTo(withdrawAmount);
+            assertThat(result.getType()).isEqualTo(Transaction.TransactionType.WITHDRAWAL);
+        }
+
+        @DisplayName("Снятие средств должно бросать исключение, если счёт не найден")
+        @Test
+        void withdraw_shouldThrowAccountNotFoundExceptionWhenAccountNotFound() {
+            TransactionRequest request = TransactionRequest.builder()
+                    .amount(new BigDecimal("1000.00"))
+                    .description("Withdraw")
+                    .build();
+
+            when(accountRepository.findByAccountNumber(testAccountNumber))
+                    .thenReturn(Optional.empty());
+
+            AccountNotFoundException exception = assertThrows(
+                    AccountNotFoundException.class,
+                    () -> accountService.withdraw(testAccountNumber, request)
+            );
+
+            assertEquals("Account with account number " + testAccountNumber + " not found",
+                    exception.getMessage());
+
+            verify(accountRepository, never()).save(any(Account.class));
+            verify(kafkaProducer, never()).sendTransactionEvent((any()));
+        }
     }
 }
