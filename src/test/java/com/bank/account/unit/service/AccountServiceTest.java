@@ -221,5 +221,28 @@ class AccountServiceTest {
             assertThat(result.getAmount()).isEqualTo(withdrawAmount);
             assertThat(result.getType()).isEqualTo(Transaction.TransactionType.WITHDRAWAL);
         }
+
+        @DisplayName("Снятие средств должно бросать исключение, если счёт не найден")
+        @Test
+        void withdraw_shouldThrowAccountNotFoundExceptionWhenAccountNotFound() {
+            TransactionRequest request = TransactionRequest.builder()
+                    .amount(new BigDecimal("1000.00"))
+                    .description("Withdraw")
+                    .build();
+
+            when(accountRepository.findByAccountNumber(testAccountNumber))
+                    .thenReturn(Optional.empty());
+
+            AccountNotFoundException exception = assertThrows(
+                    AccountNotFoundException.class,
+                    () -> accountService.withdraw(testAccountNumber, request)
+            );
+
+            assertEquals("Account with account number " + testAccountNumber + " not found",
+                    exception.getMessage());
+
+            verify(accountRepository, never()).save(any(Account.class));
+            verify(kafkaProducer, never()).sendTransactionEvent((any()));
+        }
     }
 }
