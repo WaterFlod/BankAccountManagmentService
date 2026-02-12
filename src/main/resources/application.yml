@@ -34,3 +34,7 @@ app:
       org.springframework.kafka: INFO
       org.hibernate.SQL: DEBUG
       org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+jwt:
+  secret: tye64d8818007570e9fd4e9736da383b0ee124e91e4d44ce852432456df0e986
+  expiration: 86400000
