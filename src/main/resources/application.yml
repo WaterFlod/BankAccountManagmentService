@@ -6,10 +6,10 @@ spring:
     name: bank-account-service
 
   datasource:
-    url: jdbc:postgresql://postgres:5432/bankdb
+    url: jdbc:h2:mem:testdb
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: org.h2.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,24 +17,4 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  kafka:
-    bootstrap-servers: kafka:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
-app:
-  kafka:
-    topic: banking-transactions
-  logging:
-    level:
-      com.example.demo: DEBUG
-      org.springframework.kafka: INFO
-      org.hibernate.SQL: DEBUG
-      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-
-jwt:
-  secret: tye64d8818007570e9fd4e9736da383b0ee124e91e4d44ce852432456df0e986
-  expiration: 86400000
+        dialect: org.hibernate.dialect.H2Dialect
