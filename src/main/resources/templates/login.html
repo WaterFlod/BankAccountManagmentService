@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Банк</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="wave-canvas"></canvas>
+
+<header class="header">
+    <div class="container">
+        <div class="navbar">
+            <a th:href="@{/home}" class="logo">Bank</a>
+            <div class="nav-links">
+                <a href="#">Карты</a>
+                <a href="#">Кредиты</a>
+                <a href="#">Накопления</a>
+            </div>
+            <div class="auth-buttons">
+                <form method="get" th:action="@{/register}">
+                    <button class="btn-outline" type="submit">Стать клиентом</button>
+                </form>
+                <form method="get" th:action="@{/login}">
+                    <button class="btn-primary" >Войти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <div class="hero">
+            <h1>Войдите в личный кабинет</h1>
+        </div>
+    </div>
+
+    <div class="login-section">
+        <div class="container">
+            <div class="form-container">
+                <h2 class="form-title">Авторизация</h2>
+                <div style="text-align: center;">
+                    <div class="form-subtitle">Войдите в свой аккаунт</div>
+                </div>
+
+                <form method="post" th:action="@{/login}">
+
+                    <div class="error" th:if="${param.error}" th:text="${error}" ></div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-envelope"></i> Электронная почта или телефон</label>
+                        <input type="text" name="username" id="loginIdentifier" placeholder="email@example.com / +7 (___) ___-__-__" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-lock"></i> Пароль</label>
+                        <input type="password" name="password" id="password" placeholder="Введите пароль" required>
+                    </div>
+
+                    <div class="login-options">
+                        <a href="#" id="forgotPasswordLink" class="forgot-link">Забыли пароль?</a>
+                    </div>
+
+                    <button type="submit" class="login-btn">Войти в Bank</button>
+
+                    <div class="register-link">
+                        Ещё не с нами? <a th:href="@{/register}" id="switchToRegister">Открыть счёт</a>
+                    </div>
+
+                    <div class="badge">
+                        <i class="fas fa-shield-alt"></i> Защищено технологией шифрования
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <div class="copyright">
+            © Bank — является вымышленным продуктом.
+        </div>
+    </div>
+</footer>
+<script src="js/index.js">
+</script>
+</body>
+</html>
