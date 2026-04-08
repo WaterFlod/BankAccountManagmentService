@@ -2,14 +2,8 @@ package com.bank.account.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+
 
 @Entity
 @Table(name="users")
@@ -19,7 +13,7 @@ import java.util.Set;
 @Getter @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
-public class User implements UserDetails {
+public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
@@ -32,6 +26,11 @@ public class User implements UserDetails {
     @Setter(AccessLevel.NONE)
     private String email;
 
+    @Column(unique = true, nullable = false)
+    @EqualsAndHashCode.Include
+    @Setter(AccessLevel.NONE)
+    private String phoneNumber;
+
     @Column(nullable = false)
     private String password;
 
@@ -41,9 +40,8 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String lastName;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @Column(nullable = false)
-    private Set<Role> roles;
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
     @Column(name = "created_at")
     private LocalDateTime created_at;
@@ -51,35 +49,5 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         created_at = LocalDateTime.now();
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return getRoles();
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
     }
 }
