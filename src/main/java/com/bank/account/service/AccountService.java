@@ -3,15 +3,12 @@ package com.bank.account.service;
 import com.bank.account.dto.*;
 import com.bank.account.exception.AccountNotFoundException;
 import com.bank.account.exception.InsufficientFundsException;
-import com.bank.account.kafka.KafkaTransactionProducer;
-import com.bank.account.kafka.TransactionEvent;
 import com.bank.account.model.Account;
 import com.bank.account.model.Transaction;
 import com.bank.account.repository.AccountRepository;
 import com.bank.account.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +23,6 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
-    private final KafkaTransactionProducer kafkaProducer;
 
     @Transactional
     public AccountDTO createAccount(CreateAccountRequest request) {
@@ -34,7 +30,6 @@ public class AccountService {
 
         Account account = new Account();
         account.setAccountNumber(accountNumber);
-        account.setOwnerName(request.getOwnerName());
         account.setType(request.getType());
         account.setBalance(request.getInitialDeposit());
 
@@ -74,7 +69,6 @@ public class AccountService {
                 Transaction.TransactionType.DEPOSIT,
                 request.getDescription());
 
-        sendTransactionEvent(transaction);
         return convertToTransactionDTO(transaction);
     }
 
@@ -94,7 +88,6 @@ public class AccountService {
                 Transaction.TransactionType.WITHDRAWAL,
                 request.getDescription());
 
-        sendTransactionEvent(transaction);
         return convertToTransactionDTO(transaction);
     }
 
@@ -127,10 +120,6 @@ public class AccountService {
                 "Transfer from " + fromAccount.getAccountNumber()
         );
 
-        // Добавляем события в Kafka
-        sendTransactionEvent(fromTransaction);
-        sendTransactionEvent(toTransaction);
-
         log.info("Transfer completed: {} -> {}, amount: {}",
                 fromAccount.getAccountNumber(),
                 toAccount.getAccountNumber(),
@@ -142,20 +131,6 @@ public class AccountService {
                 convertToTransactionDTO(toTransaction),
                 request.getAmount()
         );
-    }
-
-    private void sendTransactionEvent(Transaction transaction) {
-        TransactionEvent event = new TransactionEvent(
-                transaction.getId(),
-                transaction.getAccount().getAccountNumber(),
-                transaction.getAmount(),
-                transaction.getType(),
-                transaction.getDescription(),
-                transaction.getBalanceAfter(),
-                transaction.getTimestamp()
-        );
-
-        kafkaProducer.sendTransactionEvent(event);
     }
 
     private Account findAccountByNumber(String accountNumber) {
@@ -183,7 +158,6 @@ public class AccountService {
         AccountDTO dto = new AccountDTO();
         dto.setId(account.getId());
         dto.setAccountNumber(account.getAccountNumber());
-        dto.setOwnerName(account.getOwnerName());
         dto.setBalance(account.getBalance());
         dto.setType(account.getType());
         return dto;
