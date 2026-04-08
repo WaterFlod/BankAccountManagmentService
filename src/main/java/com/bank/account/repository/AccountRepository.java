@@ -14,13 +14,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, Long> {
+public interface AccountRepository extends JpaRepository<Account, String> {
 
     // Найти по номеру счёта
     Optional<Account> findByAccountNumber(String accountNumber);
-
-    // Найти по имени владельца
-    List<Account> findByOwnerName(String ownerName);
 
     // Найти по типу счёта
     List<Account> findByType(Account.AccountType type);
