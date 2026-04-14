@@ -2,6 +2,7 @@ package com.bank.account.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Transaction {
 
     @Id
@@ -39,6 +41,10 @@ public class Transaction {
 
     @Column(nullable = false)
     private BigDecimal balanceAfter;
+
+    @Version
+    @Setter(AccessLevel.NONE)
+    private Long version;
 
     public enum TransactionType {
         DEPOSIT, WITHDRAWAL, TRANSFER_IN, TRANSFER_OUT
