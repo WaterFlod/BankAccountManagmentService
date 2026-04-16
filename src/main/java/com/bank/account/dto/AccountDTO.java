@@ -1,6 +1,6 @@
 package com.bank.account.dto;
 
-import com.bank.account.model.Account.AccountType;
+import com.bank.account.model.AccountType;
 import lombok.Data;
 
 import java.math.BigDecimal;

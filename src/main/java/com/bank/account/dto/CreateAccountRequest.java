@@ -1,6 +1,6 @@
 package com.bank.account.dto;
 
-import com.bank.account.model.Account.AccountType;
+import com.bank.account.model.AccountType;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +17,7 @@ public class CreateAccountRequest {
 
     @NotBlank(message = "Имя не может быть пустым")
     @Size(min = 2, max = 50, message = "Размер имени ")
-    private String ownerName;
+    private String identifier;
 
     @NotNull(message = "Тип обязателен")
     private AccountType type;

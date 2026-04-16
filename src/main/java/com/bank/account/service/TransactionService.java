@@ -1,13 +1,21 @@
 package com.bank.account.service;
 
+import com.bank.account.dto.TransactionResponse;
+import com.bank.account.dto.TransactionRequest;
+import com.bank.account.dto.TransferResponse;
 import com.bank.account.model.Account;
 import com.bank.account.model.Transaction;
+import com.bank.account.model.TransactionType;
+import com.bank.account.repository.AccountRepository;
 import com.bank.account.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -16,15 +24,87 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    private Transaction createTransaction(Account account, BigDecimal amount,
-                                          Transaction.TransactionType type, String description) {
-        Transaction transaction = new Transaction();
-        transaction.setAccount(account);
-        transaction.setAmount(amount);
-        transaction.setType(type);
-        transaction.setDescription(description);
-        transaction.setBalanceAfter(account.getBalance());
+    private final AccountRepository accountRepository;
 
-        return transactionRepository.save(transaction);
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getAccountTransaction(String accountNumber) {
+        return transactionRepository.findByAccountNumber(accountNumber)
+                .stream()
+                .map(this::convertToTransactionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public TransactionResponse deposit(Account account, BigDecimal amount, String desc) {
+        Transaction transaction = Transaction.builder()
+                .account(account)
+                .amount(amount)
+                .type(TransactionType.DEPOSIT)
+                .description(desc)
+                .balanceAfter(account.getBalance())
+                .build();
+
+        transactionRepository.save(transaction);
+
+        return convertToTransactionResponse(transaction);
+    }
+
+    @Transactional
+    public TransactionResponse withdraw(Account account, BigDecimal amount, String desc) {
+        Transaction transaction = Transaction.builder()
+                .account(account)
+                .amount(amount)
+                .type(TransactionType.WITHDRAWAL)
+                .description(desc)
+                .balanceAfter(account.getBalance())
+                .build();
+
+        transactionRepository.save(transaction);
+
+        return convertToTransactionResponse(transaction);
+    }
+
+    @Transactional
+    public TransferResponse transferFrom(Account fromAccount, String toAccountNumber, BigDecimal amount) {
+        Transaction transfer = Transaction.builder()
+                .account(fromAccount)
+                .amount(amount)
+                .type(TransactionType.TRANSFER_OUT)
+                .description("Перевод на счет: " + toAccountNumber)
+                .build();
+
+        transactionRepository.save(transfer);
+
+        return new TransferResponse(
+                transfer.getAccount().getAccountNumber(),
+                toAccountNumber,
+                transfer.getAmount(),
+                transfer.getBalanceAfter(),
+                transfer.getTimestamp()
+                );
+    }
+
+    @Transactional
+    public void transferTo(Account toAccount, String fromAccountNumber, BigDecimal amount) {
+        Transaction transfer = Transaction.builder()
+                .account(toAccount)
+                .amount(amount)
+                .type(TransactionType.TRANSFER_IN)
+                .description("Перевод с счета: " + fromAccountNumber)
+                .build();
+
+        transactionRepository.save(transfer);
+    }
+
+    private TransactionResponse convertToTransactionResponse(Transaction transaction) {
+        TransactionResponse dto = new TransactionResponse(
+                transaction.getAccount().getAccountNumber(),
+                transaction.getAmount(),
+                transaction.getType(),
+                transaction.getTimestamp(),
+                transaction.getBalanceAfter()
+        );
+
+        return dto;
     }
 }

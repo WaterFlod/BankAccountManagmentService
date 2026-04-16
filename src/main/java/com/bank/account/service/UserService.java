@@ -4,22 +4,19 @@ import com.bank.account.dto.RegistrationRequest;
 import com.bank.account.model.Role;
 import com.bank.account.model.User;
 import com.bank.account.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.Optional;
-import java.util.List;
 
 @Service
+@AllArgsConstructor
 public class UserService {
 
-    @Autowired
-    UserRepository userRepository;
-    @Autowired
-    PasswordEncoder passwordEncoder;
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public boolean existsUserByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -27,6 +24,11 @@ public class UserService {
 
     public boolean existsUserByPhoneNumber(String phoneNumber) {
         return userRepository.existsByPhoneNumber(phoneNumber);
+    }
+
+    public User findUserByIdentifier(String identifier) {
+        Optional<User> user = userRepository.findByEmail(identifier);
+        return user.get();
     }
 
     public boolean registerUser(RegistrationRequest request) {

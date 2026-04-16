@@ -4,17 +4,14 @@ import com.bank.account.dto.*;
 import com.bank.account.exception.AccountNotFoundException;
 import com.bank.account.exception.InsufficientFundsException;
 import com.bank.account.model.Account;
-import com.bank.account.model.Transaction;
+import com.bank.account.model.User;
 import com.bank.account.repository.AccountRepository;
-import com.bank.account.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -22,24 +19,32 @@ import java.util.stream.Collectors;
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
+    private final TransactionService transactionService;
+    private final UserService userService;
 
     @Transactional
-    public AccountDTO createAccount(CreateAccountRequest request) {
+    public TransactionResponse createAccount(CreateAccountRequest request) {
         String accountNumber = generateAccountNumber();
 
-        Account account = new Account();
-        account.setAccountNumber(accountNumber);
-        account.setType(request.getType());
-        account.setBalance(request.getInitialDeposit());
+        User user = userService.findUserByIdentifier(request.getIdentifier());
+
+        Account account = Account.builder()
+                .accountNumber(accountNumber)
+                .type(request.getType())
+                .user(user)
+                .balance(request.getInitialDeposit())
+                .build();
 
         account = accountRepository.save(account);
 
-        createTransaction(account, request.getInitialDeposit(),
-                Transaction.TransactionType.DEPOSIT, "Initial deposit");
+        TransactionResponse response = transactionService.deposit(
+                account,
+                request.getInitialDeposit(),
+                "Первоначальный депозит"
+        );
 
-        log.info("Account created: {}", accountNumber);
-        return convertToDTO(account);
+        log.info("Счет создан: {}", accountNumber);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -48,32 +53,25 @@ public class AccountService {
         return convertToDTO(account);
     }
 
-    @Transactional(readOnly = true)
-    public List<TransactionDTO> getAccountTransaction(String accountNumber) {
-        Account account = findAccountByNumber(accountNumber);
-        return transactionRepository.findByAccountOrderByTimestamp(account)
-                .stream()
-                .map(this::convertToTransactionDTO)
-                .collect(Collectors.toList());
-    }
-
     @Transactional
-    public TransactionDTO deposit(String accountNumber, TransactionRequest request) {
+    public TransactionResponse deposit(String accountNumber, TransactionRequest request) {
         Account account = findAccountByNumber(accountNumber);
 
         BigDecimal newBalance = account.getBalance().add(request.getAmount());
         account.setBalance(newBalance);
         accountRepository.save(account);
 
-        Transaction transaction = createTransaction(account, request.getAmount(),
-                Transaction.TransactionType.DEPOSIT,
-                request.getDescription());
+        TransactionResponse response = transactionService.deposit(
+                account,
+                request.getAmount(),
+                "Пополнение счета " + account.getAccountNumber() + " на сумму " + request.getAmount()
+        );
 
-        return convertToTransactionDTO(transaction);
+        return response;
     }
 
     @Transactional
-    public TransactionDTO withdraw(String accountNumber, TransactionRequest request) {
+    public TransactionResponse withdraw(String accountNumber, TransactionRequest request) {
         Account account = findAccountByNumber(accountNumber);
 
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
@@ -82,17 +80,20 @@ public class AccountService {
 
         BigDecimal newBalance = account.getBalance().subtract(request.getAmount());
         account.setBalance(newBalance);
+
         accountRepository.save(account);
 
-        Transaction transaction = createTransaction(account, request.getAmount(),
-                Transaction.TransactionType.WITHDRAWAL,
-                request.getDescription());
+        TransactionResponse response = transactionService.withdraw(
+                account,
+                request.getAmount(),
+                "Убыль счета " + account.getAccountNumber() + " на сумму " + request.getAmount()
+        );
 
-        return convertToTransactionDTO(transaction);
+        return response;
     }
 
     @Transactional
-    public TransferResultDTO transfer(TransferRequest request) {
+    public TransferResponse transfer(TransferRequest request) {
         Account fromAccount = findAccountByNumber(request.getFromAccountNumber());
         Account toAccount = findAccountByNumber(request.getToAccountNumber());
 
@@ -105,9 +106,10 @@ public class AccountService {
         fromAccount.setBalance(fromNewBalance);
         accountRepository.save(fromAccount);
 
-        Transaction fromTransaction = createTransaction(fromAccount, request.getAmount(),
-                Transaction.TransactionType.TRANSFER_OUT,
-                "Transfer to " + toAccount.getAccountNumber()
+        TransferResponse response = transactionService.transferFrom(
+                fromAccount,
+                toAccount.getAccountNumber(),
+                request.getAmount()
         );
 
         // Добавляем на счёт получателя
@@ -115,39 +117,20 @@ public class AccountService {
         toAccount.setBalance(toNewBalance);
         accountRepository.save(toAccount);
 
-        Transaction toTransaction = createTransaction(toAccount, request.getAmount(),
-                Transaction.TransactionType.TRANSFER_IN,
-                "Transfer from " + fromAccount.getAccountNumber()
-        );
+        transactionService.transferTo(toAccount, fromAccount.getAccountNumber(), request.getAmount());
 
-        log.info("Transfer completed: {} -> {}, amount: {}",
+        log.info("Перевод выполнен: {} -> {}, сумма: {}",
                 fromAccount.getAccountNumber(),
                 toAccount.getAccountNumber(),
                 request.getAmount()
         );
 
-        return  convertToTransferResultDTO(
-                convertToTransactionDTO(fromTransaction),
-                convertToTransactionDTO(toTransaction),
-                request.getAmount()
-        );
+        return response;
     }
 
     private Account findAccountByNumber(String accountNumber) {
             return accountRepository.findByAccountNumber(accountNumber)
                     .orElseThrow(() -> new AccountNotFoundException(accountNumber));
-    }
-
-    private Transaction createTransaction(Account account, BigDecimal amount,
-                                          Transaction.TransactionType type, String description) {
-        Transaction transaction = new Transaction();
-        transaction.setAccount(account);
-        transaction.setAmount(amount);
-        transaction.setType(type);
-        transaction.setDescription(description);
-        transaction.setBalanceAfter(account.getBalance());
-
-        return transactionRepository.save(transaction);
     }
 
     private String generateAccountNumber() {
@@ -160,31 +143,6 @@ public class AccountService {
         dto.setAccountNumber(account.getAccountNumber());
         dto.setBalance(account.getBalance());
         dto.setType(account.getType());
-        return dto;
-    }
-
-    private TransactionDTO convertToTransactionDTO(Transaction transaction) {
-        TransactionDTO dto = new TransactionDTO();
-        dto.setId(transaction.getId());
-        dto.setAccountNumber(transaction.getAccount().getAccountNumber());
-        dto.setAmount(transaction.getAmount());
-        dto.setType(transaction.getType());
-        dto.setDescription(transaction.getDescription());
-        dto.setTimestamp(transaction.getTimestamp());
-        dto.setBalanceAfter(transaction.getBalanceAfter());
-        return dto;
-    }
-
-    private TransferResultDTO convertToTransferResultDTO(
-            TransactionDTO fromTransaction,
-            TransactionDTO toTransaction,
-            BigDecimal amount) {
-
-        TransferResultDTO dto = new TransferResultDTO();
-
-        dto.setFromTransaction(fromTransaction);
-        dto.setToTransaction(toTransaction);
-        dto.setTransferAmount(amount);
         return dto;
     }
 }
