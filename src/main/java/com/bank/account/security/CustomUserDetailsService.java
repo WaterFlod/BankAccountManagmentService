@@ -1,4 +1,4 @@
-package com.bank.account.service;
+package com.bank.account.security;
 
 import com.bank.account.model.User;
 import com.bank.account.repository.UserRepository;
@@ -20,11 +20,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String loginInput) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(loginInput)
-                .or(() -> userRepository.findByPhoneNumber(loginInput))
-                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + loginInput));
-        return new org.springframework.security.core.userdetails.User(
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByEmailOrPhoneNumber(username, username)
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + username));
+
+        return new UserDetailsImpl(
+                user.getId(),
                 user.getEmail(),
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
