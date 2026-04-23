@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="ru" >
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Банк</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/form.css}" type="text/css">
+    <link rel="stylesheet" th:href="@{/css/style.css}" type="text/css">
+</head>
+<body>
+
+<canvas id="wave-canvas"></canvas>
+
+<header class="header">
+    <div class="container">
+        <div class="navbar">
+            <a th:href="@{/home}" class="logo">Bank</a>
+            <div class="nav-links">
+                <a th:href="@{/product/debit}">Карты</a>
+                <a th:href="@{/product/credit}">Кредиты</a>
+                <a th:href="@{/product/savings}">Накопления</a>
+            </div>
+            <div class="username" sec:authorize="isAuthenticated()">
+                <a th:text="${username}" th:href="@{/account}"></a>
+            </div>
+            <div class="auth-buttons" sec:authorize="isAnonymous()">
+                <form method="get" th:action="@{/login}">
+                    <button class="btn-primary" >Войти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <div class="hero">
+            <h1>Пополните свой счет</h1>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="container">
+            <div class="form-container">
+                <h2 class="form-title">Пополнение</h2>
+                <div style="text-align: center;">
+                    <div class="form-subtitle">Введите сумму пополнения счета</div>
+                </div>
+
+                <form th:object="${request}" method="post" th:action="@{'/account/' + ${accountNumber} + '/deposit'}">
+
+                    <div class="error" th:if="${param.error}" th:text="${error}" ></div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-money"></i> Сумма пополнения</label>
+                        <input type="text" th:field="*{amount}" placeholder="0" required>
+                    </div>
+
+                    <button type="submit" class="btn">Пополнить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <div class="copyright">
+            © Bank — является вымышленным продуктом.
+        </div>
+    </div>
+</footer>
+<script type="text/javascript" th:src="@{/js/script.js}"></script>
+</script>
+</body>
+</html>

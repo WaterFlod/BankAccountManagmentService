@@ -46,4 +46,21 @@ public class AccountController {
     public String createAccount() {
         return "redirect:/open-account";
     }
+
+    @GetMapping("/{accountNumber}/deposit")
+    public String depositForm(@PathVariable("accountNumber") String accountNumber,
+                              Authentication auth,
+                              Model model) {
+        model.addAttribute("username", auth.getName());
+        model.addAttribute("accountNumber", accountNumber);
+        model.addAttribute("request", new TransactionRequest());
+        return "deposit";
+    }
+
+    @PostMapping("/{accountNumber}/deposit")
+    public String deposit(@PathVariable("accountNumber") String accountNumber,
+                          @Valid @ModelAttribute("request") TransactionRequest request) {
+        accountService.deposit(accountNumber, request);
+        return "redirect:/account";
+    }
 }
