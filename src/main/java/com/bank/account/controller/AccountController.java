@@ -82,4 +82,16 @@ public class AccountController {
 
         return "redirect:/account";
     }
+
+    @GetMapping("/{accountNumber}/transaction")
+    public String getAccountTransactions(@PathVariable("accountNumber") String accountNumber,
+                                         Authentication auth, Model model) {
+        model.addAttribute("username", auth.getName());
+
+        List<TransactionResponse> transactions = transactionService.getAccountTransaction(accountNumber);
+
+        model.addAttribute("transactions", transactions);
+
+        return "transaction";
+    }
 }

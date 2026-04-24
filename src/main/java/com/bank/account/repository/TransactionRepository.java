@@ -11,7 +11,8 @@ import java.util.List;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
-    List<Transaction> findByAccount(Account account);
+    @Query("SELECT t FROM Transaction t JOIN t.account a WHERE a.accountNumber = :number ORDER BY t.timestamp DESC")
+    List<Transaction> findByAccountNumber(@Param("number") String number);
 
     @Query("SELECT t FROM Transaction t " +
            "JOIN t.account a " +

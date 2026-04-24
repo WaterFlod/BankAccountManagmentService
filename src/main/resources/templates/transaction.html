@@ -40,44 +40,8 @@
     <div class="container">
         <div class="dashboard-header">
             <div class="section-title">
-                <i class="fas fa-wallet"></i> Ваши счета
+                <i class="fas fa-wallet"></i> Ваши транзакции
             </div>
-            <div class="total-balance">
-                <div class="label">Общий баланс всех счетов</div>
-                <div class="amount"><span th:text="${amount}"></span> ₽</div>
-            </div>
-        </div>
-
-        <div class="accounts-section">
-            <div class="accounts-grid">
-                <div class="account-card" th:each="acc : ${accounts}">
-                    <div class="account-info">
-                        <div class="account-details">
-                            <div class="account-number">
-                                <span th:text="${acc.accountNumber}"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="account-balance">
-                        <div class="balance-amount"><span th:text="${acc.balance}"></span> ₽</div>
-                        <div class="balance-label">доступно</div>
-                    </div>
-                    <div class="account-actions">
-                        <form methods="get" th:action="@{'/account/' + ${acc.accountNumber} + '/deposit'}">
-                            <button class="action-btn"><i class="fas fa-plus-circle"></i> Пополнить</button>
-                        </form>
-                        <form methods="get" th:action="@{'/account/' + ${acc.accountNumber} + '/transfer'}">
-                            <button class="action-btn"><i class="fas fa-exchange-alt"></i> Перевести</button>
-                        </form>
-                        <form methods="get" th:action="@{'/account/' + ${acc.accountNumber} + '/transaction'}">
-                            <button class="action-btn"><i class="fas fa-download"></i> Выписка</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <form method="get" th:action="@{/account/open-account}">
-                <button class="open-btn" >Открыть новый счет</button>
-            </form>
         </div>
 
         <div class="recent-section">

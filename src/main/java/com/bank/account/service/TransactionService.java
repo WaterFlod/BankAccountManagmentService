@@ -30,8 +30,8 @@ public class TransactionService {
 
     private final AccountRepository accountRepository;
 
-    public List<TransactionResponse> getAccountTransaction(Account acc) {
-        return transactionRepository.findByAccount(acc)
+    public List<TransactionResponse> getAccountTransaction(String acc) {
+        return transactionRepository.findByAccountNumber(acc)
                 .stream()
                 .map(this::convertToTransactionResponse)
                 .collect(Collectors.toList());
