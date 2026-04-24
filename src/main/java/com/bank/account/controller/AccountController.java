@@ -1,6 +1,7 @@
 package com.bank.account.controller;
 
 import com.bank.account.dto.*;
+import com.bank.account.model.AccountType;
 import com.bank.account.security.SecurityUtils;
 import com.bank.account.service.AccountService;
 import com.bank.account.service.TransactionService;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -42,9 +44,28 @@ public class AccountController {
         return "account";
     }
 
+    @GetMapping("/open-account")
+    public String createAccountForm(Authentication auth, Model model) {
+        model.addAttribute("username", auth.getName());
+        model.addAttribute("request", new OpenAccount());
+        return "open-account";
+    }
+
     @PostMapping("/open-account")
-    public String createAccount() {
-        return "redirect:/open-account";
+    public String createAccount(@Valid @ModelAttribute("request") OpenAccount request,
+                                Authentication auth) {
+
+        BigDecimal amount = request.getAmount();
+
+        CreateAccountRequest createRequest = new CreateAccountRequest(
+                auth.getName(),
+                AccountType.CHECKING,
+                amount
+        );
+
+        accountService.createAccount(createRequest);
+
+        return "redirect:/account";
     }
 
     @GetMapping("/{accountNumber}/deposit")
