@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "account_type", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "accounts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter @Setter
@@ -27,9 +26,6 @@ public abstract class Account {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Column(name = "account_type", insertable = false, updatable = false)
-    private String accountType;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
