@@ -111,28 +111,15 @@ public class AccountService {
 
     @Transactional
     public void depositInternal(String accountNumber, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be positive");
-        }
-
         Account account = getAccount(accountNumber);
-        BigDecimal balanceBefore = account.getBalance();
-        BigDecimal newBalance = balanceBefore.add(amount);
 
-        if (account instanceof CreditAccount credit) {
-            credit.setPrincipalDebit(credit.getPrincipalDebit().subtract(amount));
-            if (credit.getPrincipalDebit().compareTo(BigDecimal.ZERO) < 0) {
-                credit.setPrincipalDebit(BigDecimal.ZERO);
-            }
-        }
-
-        account.setBalance(newBalance);
+        account.deposit(amount);
         accountRepository.save(account);
 
         transactionService.createTransaction(account, amount, TransactionType.DEPOSIT,
-                "Deposit account " + accountNumber + " for the amount " + amount, newBalance);
+                "Deposit account " + accountNumber + " for the amount " + amount, account.getBalance());
 
-        log.info("Deposit account {} for the amount {}: new balance {}", accountNumber, amount, newBalance);
+        log.info("Deposit account {} for the amount {}: new balance {}", accountNumber, amount, account.getBalance());
     }
 
     @Transactional(propagation = Propagation.NEVER)
@@ -151,19 +138,10 @@ public class AccountService {
 
     @Transactional
     public void withdrawInternal(String accountNumber, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Withdraw amount must be positive");
-        }
-
         Account account = getAccount(accountNumber);
-        validateSufficientFunds(account, amount);
 
-        BigDecimal newBalance = account.getBalance().subtract(amount);
-        account.setBalance(newBalance);
+        account.withdraw(amount);
 
-        if (account instanceof CreditAccount credit) {
-            credit.setPrincipalDebit(credit.getPrincipalDebit().add(amount));
-        }
         accountRepository.save(account);
 
         transactionService.createTransaction(account, amount, TransactionType.WITHDRAWAL,
@@ -198,32 +176,17 @@ public class AccountService {
         Account from = getAccount(fromAccountNumber);
         Account to = getAccount(toAccountNumber);
 
-        validateSufficientFunds(from, amount);
-
-        BigDecimal fromNewBalance = from.getBalance().subtract(amount);
-        from.setBalance(fromNewBalance);
-        if (from instanceof CreditAccount creditFrom) {
-            creditFrom.setPrincipalDebit(creditFrom.getPrincipalDebit().add(amount));
-        }
-
-        BigDecimal toNewBalance = to.getBalance().add(amount);
-        to.setBalance(toNewBalance);
-        if (to instanceof CreditAccount creditTo) {
-            creditTo.setPrincipalDebit(creditTo.getPrincipalDebit().subtract(amount));
-            if (creditTo.getPrincipalDebit().compareTo(BigDecimal.ZERO) < 0) {
-                creditTo.setPrincipalDebit(BigDecimal.ZERO);
-            }
-        }
-
+        from.withdraw(amount);
+        to.deposit(amount);
 
         accountRepository.save(from);
         accountRepository.save(to);
 
         transactionService.createTransaction(from, amount, TransactionType.TRANSFER_OUT,
-                "Transfer to account " + toAccountNumber, fromNewBalance);
+                "Transfer to account " + toAccountNumber, from.getBalance());
 
         transactionService.createTransaction(to, amount, TransactionType.TRANSFER_IN,
-                "Transfer from account " + fromAccountNumber, toNewBalance);
+                "Transfer from account " + fromAccountNumber, to.getBalance());
 
         log.info("Transfer {} from account {} to account {} completed",
                 amount, fromAccountNumber, toAccountNumber);
@@ -245,13 +208,12 @@ public class AccountService {
                     .setScale(2, RoundingMode.HALF_UP);
 
             if (interest.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal newBalance = sa.getBalance().add(interest);
-                sa.setBalance(newBalance);
+                sa.deposit(interest);
                 sa.setLastInterestDate(today);
                 savingsAccountRepository.save(sa);
 
                 transactionService.createTransaction(sa, interest, TransactionType.INTEREST,
-                        "Начислены проценты за " + days + " дн.", newBalance);
+                        "Начислены проценты за " + days + " дн.", sa.getBalance());
                 log.info("Начислены проценты {} на счет {}", interest, sa.getAccountNumber());
             }
         }
@@ -309,19 +271,5 @@ public class AccountService {
             number = UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
         } while (accountRepository.existsByAccountNumber(number));
         return number;
-    }
-
-    private void validateSufficientFunds(Account account, BigDecimal amount) {
-        if (account instanceof CreditAccount credit) {
-            BigDecimal used = credit.getPrincipalDebit().add(credit.getAccruedInterest());
-            BigDecimal available = credit.getCreditLimit().subtract(used);
-            if (amount.compareTo(available) > 0) {
-                throw new InsufficientFundsException("Недостаточно кредитного лимита. Доступно: " + available);
-            }
-        } else {
-            if (account.getBalance().compareTo(amount) < 0) {
-                throw new InsufficientFundsException("Недостаточно средств на счете");
-            }
-        }
     }
 }

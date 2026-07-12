@@ -1,5 +1,6 @@
 package com.bank.account.model;
 
+import com.bank.account.exception.InsufficientFundsException;
 import com.bank.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,6 +22,7 @@ public abstract class Account {
     private String accountNumber;
 
     @Column(nullable = false)
+    @Setter(AccessLevel.PRIVATE)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,5 +45,28 @@ public abstract class Account {
         this.accountNumber = accountNumber;
         this.balance = initialBalance;
         this.user = user;
+    }
+
+    public BigDecimal deposit(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Deposit amount must be positive");
+        }
+
+        setBalance(balance.add(amount));
+
+        return balance;
+    }
+
+    public BigDecimal withdraw(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Withdraw amount must be positive");
+        }
+        if (amount.compareTo(balance) < 0) {
+            throw new InsufficientFundsException("Insufficient funds in the account");
+        }
+
+        setBalance(balance.subtract(amount));
+
+        return balance;
     }
 }
