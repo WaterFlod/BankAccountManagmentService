@@ -17,13 +17,13 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class CreditAccount extends Account {
 
-    @Column
+    @Column(nullable = false)
     private BigDecimal principalDebit;
 
     @Column(nullable = false)
     private BigDecimal creditLimit;
 
-    @Column
+    @Column(nullable = false)
     private BigDecimal accruedInterest;
 
     @Column
