@@ -29,10 +29,10 @@ public class CreditAccount extends Account {
     @Column
     private LocalDate lastInterestDate;
 
-    public CreditAccount(String accountNumber, BigDecimal initialBalance, BigDecimal creditLimit, User user) {
-        super(accountNumber, creditLimit.add(initialBalance), user);
+    public CreditAccount(String accountNumber, BigDecimal creditAmount, BigDecimal creditLimit, User user) {
+        super(accountNumber, creditAmount.negate(), user);
         this.creditLimit = creditLimit;
-        this.principalDebit = initialBalance;
+        this.principalDebit = creditAmount;
         this.accruedInterest = BigDecimal.ZERO;
         this.lastInterestDate = LocalDate.now();
     }

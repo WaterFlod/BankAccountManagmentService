@@ -73,16 +73,16 @@ public class AccountService {
     }
 
     @Transactional
-    public CreditAccount createCreditAccount(User user, BigDecimal initialBalance, BigDecimal creditLimit) {
-        if (initialBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("The initial deposit must not be negative");
+    public CreditAccount createCreditAccount(User user, BigDecimal creditAmount, BigDecimal creditLimit) {
+        if (creditAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("The credit amount must not be negative");
         }
 
-        CreditAccount account = new CreditAccount(generateAccountNumber(), initialBalance, creditLimit, user);
+        CreditAccount account = new CreditAccount(generateAccountNumber(), creditAmount, creditLimit, user);
 
         /* The general logic for creating accounts has been moved
            to a separate method to reduce the amount of code */
-        account = (CreditAccount) createAccount(account, initialBalance);
+        account = (CreditAccount) createAccount(account, creditAmount);
 
         log.info("Create credit account {} with a limit {} for the user {}",
                 account.getAccountNumber(), creditLimit, user.getEmail());
