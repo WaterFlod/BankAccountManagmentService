@@ -65,4 +65,44 @@ public class CreditAccount extends Account {
 
         return super.withdraw(amount);
     }
+
+    public BigDecimal applyInterest(LocalDate today, BigDecimal annualRate) {
+        if (today == null || annualRate == null) {
+            throw new IllegalArgumentException("Parameters cannot be null");
+        }
+        if (today.isBefore(lastInterestDate)) {
+            return BigDecimal.ZERO;
+        }
+        if (principalDebit.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        long days = ChronoUnit.DAYS.between(lastInterestDate, today);
+        if (days <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal dailyRate = annualRate.divide(BigDecimal.valueOf(365), 10, RoundingMode.HALF_UP);
+        BigDecimal interest = principalDebit
+                .multiply(dailyRate)
+                .multiply(BigDecimal.valueOf(days))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        if (interest.compareTo(BigDecimal.ZERO) > 0) {
+            this.accruedInterest = this.accruedInterest.add(interest);
+            chargeInterest(interest);
+            this.lastInterestDate = today;
+        }
+
+        return interest;
+    }
+
+    private void chargeInterest(BigDecimal interest) {
+        if (interest == null || interest.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Interest must be positive");
+        }
+
+        BigDecimal newBalance = getBalance().subtract(interest);
+        setBalance(newBalance);
+    }
 }

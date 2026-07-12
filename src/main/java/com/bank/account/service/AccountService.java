@@ -5,7 +5,6 @@ import com.bank.account.model.*;
 import com.bank.account.repository.CreditAccountRepository;
 import com.bank.account.repository.SavingsAccountRepository;
 import com.bank.account.exception.AccountNotFoundException;
-import com.bank.account.exception.InsufficientFundsException;
 import com.bank.user.model.User;
 import com.bank.account.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
@@ -145,9 +144,9 @@ public class AccountService {
         accountRepository.save(account);
 
         transactionService.createTransaction(account, amount, TransactionType.WITHDRAWAL,
-                "Withdraw for the account " + account.getAccountNumber() + " for the amount " + amount, newBalance);
+                "Withdraw for the account " + account.getAccountNumber() + " for the amount " + amount, account.getBalance());
 
-        log.info("Withdraw for the account {} for the amount {}: new balance {}", accountNumber, amount, newBalance);
+        log.info("Withdraw for the account {} for the amount {}: new balance {}", accountNumber, amount, account.getBalance());
     }
 
     @Transactional(propagation = Propagation.NEVER)
@@ -198,23 +197,16 @@ public class AccountService {
         List<SavingsAccount> accounts = savingsAccountRepository.findByLastInterestDateBefore(today);
 
         for (SavingsAccount sa: accounts) {
-            long days = ChronoUnit.DAYS.between(sa.getLastInterestDate(), today);
-            if (days <= 0) continue;
-
-            BigDecimal dailyRate = SAVINGS_RATE.divide(DAYS_IN_YEAR, MC);
-            BigDecimal interest = sa.getBalance()
-                    .multiply(dailyRate)
-                    .multiply(BigDecimal.valueOf(days))
-                    .setScale(2, RoundingMode.HALF_UP);
-
+            LocalDate lastInterestDate = sa.getLastInterestDate();
+            BigDecimal interest = sa.applyInterest(today, SAVINGS_RATE);
             if (interest.compareTo(BigDecimal.ZERO) > 0) {
-                sa.deposit(interest);
-                sa.setLastInterestDate(today);
                 savingsAccountRepository.save(sa);
 
                 transactionService.createTransaction(sa, interest, TransactionType.INTEREST,
-                        "Начислены проценты за " + days + " дн.", sa.getBalance());
-                log.info("Начислены проценты {} на счет {}", interest, sa.getAccountNumber());
+                        "Interest accrued for " +
+                                ChronoUnit.DAYS.between(lastInterestDate, today)
+                                + " days", sa.getBalance());
+                log.info("Interest of {} accrued on account {}", interest, sa.getAccountNumber());
             }
         }
     }
@@ -225,25 +217,17 @@ public class AccountService {
         List<CreditAccount> accounts = creditAccountRepository.findByLastInterestDateBefore(today);
 
         for (CreditAccount ca: accounts) {
-            long days = ChronoUnit.DAYS.between(ca.getLastInterestDate(), today);
-            if (days <= 0 || ca.getPrincipalDebit().compareTo(BigDecimal.ZERO) == 0) continue;
-
-            BigDecimal dailyRate = CREDIT_RATE.divide(DAYS_IN_YEAR, MC);
-            BigDecimal interest = ca.getPrincipalDebit()
-                    .multiply(dailyRate)
-                    .multiply(BigDecimal.valueOf(days))
-                    .setScale(2, RoundingMode.HALF_UP);
+            LocalDate lastInterestDate = ca.getLastInterestDate();
+            BigDecimal interest = ca.applyInterest(today, CREDIT_RATE);
 
             if (interest.compareTo(BigDecimal.ZERO) > 0) {
-                ca.setAccruedInterest(ca.getAccruedInterest().add(interest));
-                BigDecimal newBalance = ca.getBalance().subtract(interest);
-                ca.setBalance(newBalance);
-                ca.setLastInterestDate(today);
                 creditAccountRepository.save(ca);
 
                 transactionService.createTransaction(ca, interest, TransactionType.INTEREST,
-                        "Начислены проценты по кредиту за " + days + " дн.", newBalance);
-                log.info("Начислены проценты по кредиту {} на сумму {}", ca.getAccountNumber(), interest);
+                        "Interest accrued on the credit account for "
+                                + ChronoUnit.DAYS.between(lastInterestDate, today)
+                                + " days", ca.getBalance());
+                log.info("Interest accrued on credit account {} on the amount of {}", ca.getAccountNumber(), interest);
             }
         }
     }

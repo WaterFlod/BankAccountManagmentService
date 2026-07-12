@@ -22,7 +22,7 @@ public abstract class Account {
     private String accountNumber;
 
     @Column(nullable = false)
-    @Setter(AccessLevel.PRIVATE)
+    @Setter(AccessLevel.PROTECTED)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @ManyToOne(fetch = FetchType.LAZY)
